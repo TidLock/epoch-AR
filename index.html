@@ -1,21 +1,40 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; }
-      #startButton {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        padding: 15px 30px; font-size: 18px; background: #B3BFD5; color: white;
-        border: none; border-radius: 10px; cursor: pointer; z-index: 999;
+      body { margin: 0; overflow: hidden; background-color: #0a192f; }
+      /* 这是一个全屏遮罩层，绝对不会被遮挡 */
+      #overlay {
+        position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: #0a192f; z-index: 9999;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        color: white; font-family: sans-serif;
+      }
+      .btn {
+        padding: 15px 40px; font-size: 20px; background: #B3BFD5; color: #0a192f;
+        border: none; border-radius: 30px; font-weight: bold;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
       }
     </style>
   </head>
   <body>
-    <button id="startButton">启动 AR</button>
+    <!-- 启动遮罩 -->
+    <div id="overlay">
+      <h1 style="margin-bottom: 20px;">Epoch 历元 AR</h1>
+      <p style="color: #B3BFD5; margin-bottom: 40px;">请点击下方按钮并允许相机权限</p>
+      <button class="btn" id="startButton">点击启动 AR</button>
+    </div>
+
+    <!-- AR 场景 -->
     <a-scene mindar-image="imageTargetSrc: ./targets.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" background="color: #0a192f">
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
       <a-entity mindar-image-target="targetIndex: 0">
@@ -35,14 +54,19 @@
         </a-entity>
       </a-entity>
     </a-scene>
+
     <script>
       const startButton = document.getElementById('startButton');
+      const overlay = document.getElementById('overlay');
+      
       startButton.addEventListener('click', async () => {
         try {
-          await navigator.mediaDevices.getUserMedia({ video: true });
-          startButton.style.display = 'none';
+          // 强制请求摄像头
+          await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          // 成功后隐藏遮罩
+          overlay.style.display = 'none';
         } catch (err) {
-          alert('无法获取相机权限，请确保您已允许浏览器使用摄像头。');
+          alert('无法获取相机权限！\n\n原因可能是：\n1. 您正在微信内打开，请点击右上角选择“在浏览器中打开”。\n2. 您的手机浏览器拦截了权限，请去手机设置里允许该浏览器使用相机。');
         }
       });
     </script>
