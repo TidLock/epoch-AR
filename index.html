@@ -2,55 +2,49 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- 引入 MindAR 核心库 -->
     <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
-    <!-- 引入 A-Frame 框架 -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- 引入 MindAR 的 A-Frame 扩展 -->
     <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
       body { margin: 0; overflow: hidden; }
+      #startButton {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        padding: 15px 30px; font-size: 18px; background: #B3BFD5; color: white;
+        border: none; border-radius: 10px; cursor: pointer; z-index: 999;
+      }
     </style>
   </head>
   <body>
-    <!-- imageTargetSrc 指向你的 .mind 文件，背景色设为深蓝色 -->
+    <button id="startButton">启动 AR</button>
     <a-scene mindar-image="imageTargetSrc: ./targets.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" background="color: #0a192f">
-      
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      
-      <!-- targetIndex: 0 代表识别第一张图 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity scale="1.2 1.2 1.2">
-          
-          <!-- 1. 底座：代表“历元”的星环（旋转） -->
-          <a-torus position="0 -0.4 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.02" color="#B3BFD5"
-                   animation="property: rotation; to: -90 360 0; dur: 10000; loop: true; easing: linear"></a-torus>
-
-          <!-- 2. 蛋糕：双层圆柱体 -->
-          <!-- 底层（雾霾蓝） -->
+          <a-torus position="0 -0.4 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.02" color="#B3BFD5" animation="property: rotation; to: -90 360 0; dur: 10000; loop: true; easing: linear"></a-torus>
           <a-cylinder position="0 -0.25 0" radius="0.35" height="0.15" color="#B3BFD5"></a-cylinder>
-          <!-- 顶层（暖白/珍珠白） -->
           <a-cylinder position="0 -0.1 0" radius="0.25" height="0.15" color="#FFFFFF" material="roughness: 0.2"></a-cylinder>
-
-          <!-- 3. 蜡烛与火焰（火焰有闪烁缩放动画） -->
           <a-cylinder position="0 0.05 0" radius="0.015" height="0.15" color="#FFD700"></a-cylinder>
-          <a-sphere position="0 0.15 0" radius="0.03" color="#FF4500" material="emissive: #FF4500; emissiveIntensity: 2"
-                    animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; dur: 300; loop: true"></a-sphere>
-
-          <!-- 4. 双星系统（红蓝两色交错旋转） -->
+          <a-sphere position="0 0.15 0" radius="0.03" color="#FF4500" material="emissive: #FF4500; emissiveIntensity: 2" animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; dur: 300; loop: true"></a-sphere>
           <a-entity position="0 0.4 0" animation="property: rotation; to: 0 360 0; dur: 6000; loop: true; easing: linear">
             <a-sphere position="0.15 0 0" radius="0.04" color="#FF6B6B" material="emissive: #FF6B6B; emissiveIntensity: 1.5"></a-sphere>
             <a-sphere position="-0.15 0 0" radius="0.04" color="#4ECDC4" material="emissive: #4ECDC4; emissiveIntensity: 1.5"></a-sphere>
-            <!-- 连接两颗星的轨道线 -->
             <a-box position="0 0 0" width="0.3" height="0.005" depth="0.005" color="#FFFFFF" opacity="0.5"></a-box>
           </a-entity>
-
-          <!-- 5. 悬浮文字 -->
           <a-text value="Happy Birthday" position="0 0.65 0" align="center" color="#FFD700" width="1.5" font="mozillavr"></a-text>
           <a-text value="Epoch 12.19" position="0 0.55 0" align="center" color="#B3BFD5" width="1" font="mozillavr"></a-text>
-
         </a-entity>
       </a-entity>
     </a-scene>
+    <script>
+      const startButton = document.getElementById('startButton');
+      startButton.addEventListener('click', async () => {
+        try {
+          await navigator.mediaDevices.getUserMedia({ video: true });
+          startButton.style.display = 'none';
+        } catch (err) {
+          alert('无法获取相机权限，请确保您已允许浏览器使用摄像头。');
+        }
+      });
+    </script>
   </body>
 </html>
