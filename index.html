@@ -1,94 +1,189 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image.prod.js"></script>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <!-- 引入 A-Frame 框架 -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- 引入 MindAR 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
+    <!-- 引入 MindAR 的 A-Frame 扩展 -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
       body { margin: 0; overflow: hidden; background-color: #0a192f; }
       
-      /* 最顶层的全屏遮罩，z-index 设为极高，绝对不会被挡住 */
+      /* 启动遮罩层 */
       #overlay {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background-color: #0a192f; z-index: 99999;
+        background-color: #0a192f; z-index: 9999;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
-        color: white; font-family: sans-serif; text-align: center; padding: 20px;
+        color: white; font-family: sans-serif; text-align: center; padding: 20px; box-sizing: border-box;
       }
       
       .btn {
         padding: 15px 40px; font-size: 20px; background: #B3BFD5; color: #0a192f;
         border: none; border-radius: 30px; font-weight: bold; cursor: pointer;
+        box-shadow: 0 4px 15px rgba(179, 191, 213, 0.4);
       }
       
       /* 错误提示框 */
       #error-msg {
         display: none; margin-top: 20px; padding: 15px; 
-        background: rgba(255, 0, 0, 0.2); border: 1px solid red; 
-        color: #ffcccc; border-radius: 8px; font-size: 14px;
+        background: rgba(255, 0, 0, 0.1); border: 1px solid #ff6b6b; 
+        color: #ffcccc; border-radius: 8px; font-size: 14px; line-height: 1.5; max-width: 90%;
+      }
+
+      /* 诊断：识别成功提示字 */
+      #status-text {
+        position: fixed; top: 20px; left: 20px; z-index: 10000;
+        color: #00ff00; font-size: 24px; font-weight: bold; display: none;
+        text-shadow: 2px 2px 4px black;
       }
     </style>
   </head>
   <body>
-    <!-- 启动遮罩 -->
+    
+    <!-- 识别成功提示字 -->
+    <div id="status-text">✅ 识别成功！</div>
+
+    <!-- 启动遮罩层 -->
     <div id="overlay">
       <h1 style="margin-bottom: 10px; color: #B3BFD5;">Epoch 历元 AR</h1>
-      <p style="margin-bottom: 30px;">点击启动，并允许相机权限</p>
-      <button class="btn" id="startButton">点击启动</button>
+      <p style="margin-bottom: 30px; color: #ccc;">请点击按钮并允许相机权限</p>
+      <button class="btn" id="startButton">点击启动 AR</button>
       <div id="error-msg"></div>
     </div>
 
-    <!-- 注意这里加了 autoStart: false; 意思是等按钮点了再启动 -->
-    <a-scene mindar-image="autoStart: false; imageTargetSrc: ./targets.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" background="color: #0a192f">
+    <!-- AR 场景 -->
+    <a-scene 
+      mindar-image="autoStart: false; imageTargetSrc: ./targets.mind;" 
+      color-space="sRGB" 
+      renderer="colorManagement: true, physicallyCorrectLights" 
+      vr-mode-ui="enabled: false" 
+      device-orientation-permission-ui="enabled: false"
+      embedded>
       
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
       
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-entity scale="1.2 1.2 1.2">
-          <a-torus position="0 -0.4 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.02" color="#B3BFD5" animation="property: rotation; to: -90 360 0; dur: 10000; loop: true; easing: linear"></a-torus>
+      <!-- 给目标实体加上 id="ar-target" 以便 JS 监听识别状态 -->
+      <a-entity mindar-image-target="targetIndex: 0" id="ar-target">
+        
+        <!-- ⚠️ 诊断代码 1：测试用半透明大红方块。如果你看到了它，说明图扫出来了，但蛋糕没渲染出来 -->
+        <a-box position="0 0 0" width="1" height="1" depth="0.1" color="red" opacity="0.5"></a-box>
+
+        <!-- 整体容器，稍微放大，并添加整体缓慢的上下悬浮效果 -->
+        <a-entity position="0 0 0.2" scale="1.2 1.2 1.2" animation="property: position; to: 0 0.03 0.2; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
+          
+          <!-- 1. 底座：代表“历元”的星环 (15秒转一圈，极其平缓) -->
+          <a-torus position="0 -0.4 0" rotation="-90 0 0" radius="0.6" radius-tubular="0.02" color="#B3BFD5" opacity="0.8"
+                   animation="property: rotation; to: -90 360 0; dur: 15000; loop: true; easing: linear"></a-torus>
+
+          <!-- 2. 蛋糕：双层圆柱体 -->
           <a-cylinder position="0 -0.25 0" radius="0.35" height="0.15" color="#B3BFD5"></a-cylinder>
           <a-cylinder position="0 -0.1 0" radius="0.25" height="0.15" color="#FFFFFF" material="roughness: 0.2"></a-cylinder>
+
+          <!-- 3. 蜡烛与火焰 -->
           <a-cylinder position="0 0.05 0" radius="0.015" height="0.15" color="#FFD700"></a-cylinder>
-          <a-sphere position="0 0.15 0" radius="0.03" color="#FF4500" material="emissive: #FF4500; emissiveIntensity: 2" animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; dur: 300; loop: true"></a-sphere>
-          <a-entity position="0 0.4 0" animation="property: rotation; to: 0 360 0; dur: 6000; loop: true; easing: linear">
-            <a-sphere position="0.15 0 0" radius="0.04" color="#FF6B6B" material="emissive: #FF6B6B; emissiveIntensity: 1.5"></a-sphere>
-            <a-sphere position="-0.15 0 0" radius="0.04" color="#4ECDC4" material="emissive: #4ECDC4; emissiveIntensity: 1.5"></a-sphere>
-            <a-box position="0 0 0" width="0.3" height="0.005" depth="0.005" color="#FFFFFF" opacity="0.5"></a-box>
+          
+          <!-- 火焰核心：放大缩小的呼吸动画 -->
+          <a-sphere position="0 0.15 0" radius="0.03" color="#FF4500" 
+                    material="emissive: #FF4500; emissiveIntensity: 2"
+                    animation="property: scale; to: 1.3 1.3 1.3; dir: alternate; dur: 300; loop: true">
+          </a-sphere>
+          
+          <!-- 火焰外层光晕：亮度的呼吸动画 -->
+          <a-sphere position="0 0.15 0" radius="0.035" color="#FFD700" opacity="0.3" 
+                    material="emissive: #FFD700; emissiveIntensity: 1; transparent: true"
+                    animation__scale="property: scale; to: 1.5 1.5 1.5; dir: alternate; dur: 400; loop: true"
+                    animation__glow="property: material.emissiveIntensity; from: 0.5; to: 2.5; dir: alternate; dur: 400; loop: true">
+          </a-sphere>
+
+          <!-- 4. 双星系统 -->
+          <a-entity position="0 0.45 0">
+            <!-- 外层容器：控制双星整体公转 -->
+            <a-entity animation="property: rotation; to: 0 360 0; dur: 4000; loop: true; easing: linear">
+              
+              <!-- 红色星球 -->
+              <a-sphere position="0.15 0 0" radius="0.04" color="#FF6B6B" material="emissive: #FF6B6B; emissiveIntensity: 1.5"
+                        animation="property: rotation; to: 0 360 0; dur: 2000; loop: true">
+              </a-sphere>
+              
+              <!-- 蓝色星球 -->
+              <a-sphere position="-0.15 0 0" radius="0.04" color="#4ECDC4" material="emissive: #4ECDC4; emissiveIntensity: 1.5"
+                        animation="property: rotation; to: 0 360 0; dur: 2500; loop: true">
+              </a-sphere>
+              
+              <!-- 连接轨道线 -->
+              <a-box position="0 0 0" width="0.3" height="0.005" depth="0.005" color="#FFFFFF" 
+                     animation="property: opacity; from: 0.2; to: 0.8; dir: alternate; dur: 1500; loop: true">
+              </a-box>
+            </a-entity>
           </a-entity>
-          <a-text value="Happy Birthday" position="0 0.65 0" align="center" color="#FFD700" width="1.5" font="mozillavr"></a-text>
-          <a-text value="Epoch 12.19" position="0 0.55 0" align="center" color="#B3BFD5" width="1" font="mozillavr"></a-text>
+
+          <!-- 5. 悬浮文字 -->
+          <a-entity position="0 0 0" animation="property: position; to: 0 0.05 0; dir: alternate; dur: 2500; loop: true; easing: easeInOutSine">
+            <a-text value="Happy Birthday" position="0 0.7 0" align="center" color="#FFD700" width="1.5" font="mozillavr"></a-text>
+            <a-text value="Epoch 12.19" position="0 0.6 0" align="center" color="#B3BFD5" width="1" font="mozillavr"></a-text>
+          </a-entity>
+
         </a-entity>
       </a-entity>
     </a-scene>
 
+    <!-- 核心启动与诊断逻辑 -->
     <script>
-      const startButton = document.getElementById('startButton');
-      const overlay = document.getElementById('overlay');
-      const errorMsg = document.getElementById('error-msg');
-      const scene = document.querySelector('a-scene');
+      document.addEventListener("DOMContentLoaded", function() {
+        const startButton = document.getElementById('startButton');
+        const overlay = document.getElementById('overlay');
+        const errorMsg = document.getElementById('error-msg');
+        const sceneEl = document.querySelector('a-scene');
+        const arTarget = document.getElementById('ar-target');
+        const statusText = document.getElementById('status-text');
 
-      startButton.addEventListener('click', () => {
-        startButton.innerText = "正在启动...";
-        startButton.style.background = "#666";
-        
-        // 调用 MindAR 官方的启动方法
-        try {
-          scene.systems['mindar-image-system'].start().then(() => {
-            overlay.style.display = 'none'; // 启动成功，隐藏遮罩
-          }).catch((err) => {
-            showError(err.message || "系统拒绝了摄像头");
+        // ⚠️ 诊断代码 2：监听识别事件，如果扫到了，屏幕左上角显示绿字
+        arTarget.addEventListener('targetFound', () => {
+          statusText.style.display = 'block';
+        });
+        arTarget.addEventListener('targetLost', () => {
+          statusText.style.display = 'none';
+        });
+
+        sceneEl.addEventListener('loaded', function () {
+          const arSystem = sceneEl.systems['mindar-image-system'];
+
+          startButton.addEventListener('click', async () => {
+            startButton.innerText = "正在启动...";
+            startButton.style.background = "#999";
+            errorMsg.style.display = 'none';
+
+            try {
+              // 1. 先强制获取相机权限
+              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+              stream.getTracks().forEach(track => track.stop());
+
+              // 2. 启动 MindAR
+              await arSystem.start();
+              
+              // 启动成功，隐藏遮罩
+              overlay.style.display = 'none';
+
+            } catch (err) {
+              console.error("详细报错：", err);
+              startButton.innerText = "点击重试";
+              startButton.style.background = "#B3BFD5";
+              errorMsg.style.display = 'block';
+              
+              if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                errorMsg.innerHTML = "<b>相机权限被拒绝！</b><br>请点击浏览器地址栏左侧的『锁』图标，将【相机】权限设为【允许】，然后刷新页面。";
+              } else {
+                errorMsg.innerHTML = "<b>启动失败：</b><br>" + (err.message || "未知错误");
+              }
+            }
           });
-        } catch (e) {
-          showError("请刷新页面重试，或确保页面完全加载。");
-        }
+        });
       });
-
-      function showError(msg) {
-        startButton.innerText = "点击重试";
-        startButton.style.background = "#B3BFD5";
-        errorMsg.style.display = 'block';
-        errorMsg.innerHTML = "<b>启动失败：</b><br>" + msg + "<br><br><b>排查建议：</b><br>1. 请在手机自带浏览器（如Safari/Chrome）打开，绝对不要在微信里打开。<br>2. 检查手机设置里，是否禁止了该浏览器使用相机。";
-      }
     </script>
   </body>
 </html>
